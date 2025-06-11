@@ -45,7 +45,7 @@ def run_bot(minutes_ago=None):
             text=True, 
             timeout=60,
             env=env
-        )
+        )햣 
         
         if result.returncode == 0:
             logger.info("봇 실행 성공")
@@ -77,7 +77,7 @@ def main():
     
     # 시작 시 첫 번째 실행 - 20분 전 체크인 검색
     logger.info("초기 실행 (20분 전 체크인 검색)...")
-    run_bot(minutes_ago=20)
+    run_bot(minutes_ago=60)
     
     # 스케줄 실행
     try:
