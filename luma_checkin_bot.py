@@ -210,8 +210,14 @@ class LumaCheckinBot:
     def run_check(self, minutes_ago: Optional[int] = None):
         """메인 체크 로직 실행"""
         try:
-            # 첫 번째 실행인지 확인
-            first_run = self.is_first_run()
+            # 스케줄러에서 전달된 minutes_ago 값이 있는지 확인
+            force_minutes_ago = os.getenv('FORCE_MINUTES_AGO')
+            if force_minutes_ago:
+                minutes_ago = int(force_minutes_ago)
+                logger.info(f"스케줄러에서 지정된 시간: {minutes_ago}분")
+            
+            # 첫 번째 실행인지 확인 (환경 변수가 없을 때만)
+            first_run = self.is_first_run() if not force_minutes_ago else False
             
             # minutes_ago가 지정되지 않은 경우 첫 실행 여부에 따라 결정
             if minutes_ago is None:
