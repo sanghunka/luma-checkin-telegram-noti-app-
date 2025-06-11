@@ -45,7 +45,7 @@ def run_bot(minutes_ago=None):
             text=True, 
             timeout=60,
             env=env
-        )햣 
+        )
         
         if result.returncode == 0:
             logger.info("봇 실행 성공")
