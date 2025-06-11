@@ -1,0 +1,16 @@
+# Luma API Configuration
+LUMA_API_KEY=your_luma_api_key_here
+
+# Telegram Bot Configuration
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_CHAT_ID=your_telegram_group_chat_id_here
+
+# VIP 알림 설정 (선택사항)
+# VIP 참석자 명단 (쉼표로 구분, 정확한 이름 입력)
+VIP_GUESTS=김대표,이사장,박부장
+
+# VIP 체크인 시 멘션할 텔레그램 사용자들 (쉼표로 구분, @username 형태)
+MENTION_USERS=@manager1,@event_staff
+
+# Optional: Log level (DEBUG, INFO, WARNING, ERROR)
+LOG_LEVEL=INFO 
