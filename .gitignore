@@ -4,6 +4,9 @@
 # Logs
 *.log
 
+# Bot state file
+.bot_state
+
 # Python
 __pycache__/
 *.py[cod]

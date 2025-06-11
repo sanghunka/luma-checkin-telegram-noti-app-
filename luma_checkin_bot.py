@@ -4,6 +4,7 @@ Luma Check-in Telegram Notification Bot
 
 이 스크립트는 Luma 이벤트의 새로운 체크인 정보를 Telegram으로 전송합니다.
 매 5분마다 실행되어 최근 5분 내 체크인한 사용자들을 찾아 알림을 보냅니다.
+첫 실행 시에는 20분 전까지의 체크인을 검색합니다.
 """
 
 import os
@@ -27,6 +28,9 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# 첫 실행 여부를 확인하기 위한 상태 파일
+STATE_FILE = '.bot_state'
 
 class LumaAPI:
     """Luma API 클라이언트"""
@@ -119,6 +123,19 @@ class LumaCheckinBot:
         self.luma_api = LumaAPI(self.luma_api_key)
         self.telegram_bot = TelegramBot(self.telegram_bot_token, self.telegram_chat_id)
     
+    def is_first_run(self) -> bool:
+        """첫 번째 실행인지 확인"""
+        return not os.path.exists(STATE_FILE)
+    
+    def mark_as_run(self):
+        """실행 상태를 기록"""
+        try:
+            with open(STATE_FILE, 'w') as f:
+                f.write(str(datetime.now().isoformat()))
+            logger.info("실행 상태 파일이 생성되었습니다.")
+        except Exception as e:
+            logger.warning(f"상태 파일 생성 실패: {e}")
+    
     def get_recent_checkins(self, guests: List[Dict], minutes_ago: int = 5) -> List[Dict]:
         """최근 N분 내 체크인한 사용자 필터링"""
         now = datetime.utcnow()
@@ -190,16 +207,29 @@ class LumaCheckinBot:
         
         return message
     
-    def run_check(self):
+    def run_check(self, minutes_ago: Optional[int] = None):
         """메인 체크 로직 실행"""
         try:
-            logger.info("Luma 체크인 봇 실행 시작")
+            # 첫 번째 실행인지 확인
+            first_run = self.is_first_run()
+            
+            # minutes_ago가 지정되지 않은 경우 첫 실행 여부에 따라 결정
+            if minutes_ago is None:
+                minutes_ago = 20 if first_run else 5
+            
+            logger.info(f"Luma 체크인 봇 실행 시작 (최근 {minutes_ago}분 체크인 검색)")
+            
+            if first_run:
+                logger.info("첫 번째 실행: 20분 전부터 체크인 검색")
             
             # 1. 라이브 이벤트 조회
             live_events = self.luma_api.get_live_events()
             
             if not live_events:
                 logger.info("현재 라이브 상태인 이벤트가 없습니다.")
+                # 첫 실행이었다면 상태 파일 생성
+                if first_run:
+                    self.mark_as_run()
                 return
             
             # 첫 번째 라이브 이벤트 선택 (PRD에 따라 단일 이벤트만 처리)
@@ -213,14 +243,17 @@ class LumaCheckinBot:
             guests = self.luma_api.get_event_guests(event_api_id)
             logger.info(f"총 {len(guests)}명의 참석자 정보를 조회했습니다.")
             
-            # 3. 최근 5분 내 체크인한 사용자 필터링
-            recent_checkins = self.get_recent_checkins(guests, minutes_ago=5)
+            # 3. 최근 N분 내 체크인한 사용자 필터링
+            recent_checkins = self.get_recent_checkins(guests, minutes_ago=minutes_ago)
             
             if not recent_checkins:
-                logger.info("최근 5분 내 새로운 체크인이 없습니다.")
+                logger.info(f"최근 {minutes_ago}분 내 새로운 체크인이 없습니다.")
+                # 첫 실행이었다면 상태 파일 생성
+                if first_run:
+                    self.mark_as_run()
                 return
             
-            logger.info(f"최근 5분 내 {len(recent_checkins)}명이 체크인했습니다.")
+            logger.info(f"최근 {minutes_ago}분 내 {len(recent_checkins)}명이 체크인했습니다.")
             
             # 4. Telegram 메시지 전송
             for guest in recent_checkins:
@@ -232,6 +265,10 @@ class LumaCheckinBot:
                     logger.info(f"{guest_name}의 체크인 알림을 전송했습니다.")
                 else:
                     logger.error(f"메시지 전송 실패: {guest.get('name', '알 수 없음')}")
+            
+            # 첫 실행이었다면 상태 파일 생성
+            if first_run:
+                self.mark_as_run()
             
             logger.info("Luma 체크인 봇 실행 완료")
             
